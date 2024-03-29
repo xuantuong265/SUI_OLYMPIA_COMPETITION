@@ -4,3 +4,4 @@ game-server/demo-client/pnpm-lock.yaml
 game-server/demo-client/screenshot.png
 game-server/project/target
 game-server/target
+game-server/.bsp
