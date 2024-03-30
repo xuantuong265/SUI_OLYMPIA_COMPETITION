@@ -47,8 +47,10 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
       val newSession = UserSession(userId, sessionId, ref)
       println(s"new session created $sessionId")
       val json = Json.obj(
-        "sessionId" -> Json.fromString(sessionId),
-        "onlineCount" -> Json.fromInt(onlineUsers.size)
+        "tpe" -> Json.fromInt(0),
+        "data" -> Json.obj(
+           "sessionId" -> Json.fromString(sessionId)
+        )
       )
       lobby ! Join(userId)
       ref ! TextMessage.apply(json.toString)
