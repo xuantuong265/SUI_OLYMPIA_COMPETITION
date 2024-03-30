@@ -14,18 +14,12 @@ object Lobby {
   case class Join(userId: String) extends LobbyMessage
   case class UserManagerGreeting(actorRef: ActorRef[SessionMessage]) extends LobbyMessage
   
-  private case class NotifyUserJoin(users: List[User]) extends OutgoingMessage{
-    override def toWsMessage: Message = TextMessage.Strict("HAHAHHA")
-
-    override def recipients: List[UserId] = users.map(_.userId)
-  }
-
-  case class SyncLobbyData(val recipient: UserId) extends OutgoingMessage {
-    override def toWsMessage: Message = TextMessage.Strict("""
+  case class SyncLobbyData(recipients: List[UserId]) extends OutgoingMessage {
+    override def toWsMessage: Message = TextMessage.Strict(s"""
         {
           "tpe": 1,
           data: {
-               "onlineCount": 8,
+               "onlineCount": ${recipients.size},
                "rooms": [
                  {"roomId": 1,"usersCount": 3, isStarted: False},
                  {"roomId": 2,"usersCount": 0, isStarted: False},
@@ -35,7 +29,6 @@ object Lobby {
           }
       }
       """) // FIXME
-    override def recipients: List[UserId] = List(recipient)
   }
   
   case class User(userId: String)
@@ -53,9 +46,9 @@ object Lobby {
   private def live(data: Data, session: ActorRef[SessionMessage]): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
     case Join(userId) =>
       println(s"User $userId joined Lobby")
-      session ! NotifyUserJoin(data.users)
-      session ! SyncLobbyData(userId)
-      live(data.joined(userId), session)
+      val updatedData = data.joined(userId)
+      session ! SyncLobbyData(updatedData.users.map(_.userId))
+      live(updatedData, session)
   }
 
   private def postStart(): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
