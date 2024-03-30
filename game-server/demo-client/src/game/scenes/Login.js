@@ -53,7 +53,8 @@ export class Login extends Scene
     
     
     login(credentials){
-        const gameServerUrl = 'ws://localhost:8080/game'
+        // const gameServerUrl = 'ws://localhost:8080/game'
+        const gameServerUrl = 'ws://0220-34-174-1-75.ngrok-free.app/game'
         const websocket = new WebSocket(gameServerUrl)
 
         if (!this.websocket) {
