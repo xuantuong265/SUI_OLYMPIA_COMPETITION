@@ -8,10 +8,19 @@
    }
    ```
    Message types:
+    - 0 - Login Success
     - 1 - Lobby Message
     - 2 - Room Message
 
 - Json Message format:
+  + Login Success:
+      ```json
+        {
+              "tpe": 1,
+              data: {
+                   "sessionId": "3asdff#asd",
+              }
+       }
   + LobbyData: 
   ```json
     {

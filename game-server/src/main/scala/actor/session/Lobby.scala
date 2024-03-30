@@ -19,6 +19,24 @@ object Lobby {
 
     override def recipients: List[UserId] = users.map(_.userId)
   }
+
+  case class SyncLobbyData(val recipient: UserId) extends OutgoingMessage {
+    override def toWsMessage: Message = TextMessage.Strict("""
+        {
+          "tpe": 1,
+          data: {
+               "onlineCount": 8,
+               "rooms": [
+                 {"roomId": 1,"usersCount": 3, isStarted: False},
+                 {"roomId": 2,"usersCount": 0, isStarted: False},
+                 {"roomId": 3,"usersCount": 0, isStarted: False},
+                 {"roomId": 4,"usersCount": 2, isStarted: False}
+               ]
+          }
+      }
+      """) // FIXME
+    override def recipients: List[UserId] = List(recipient)
+  }
   
   case class User(userId: String)
   
@@ -36,6 +54,7 @@ object Lobby {
     case Join(userId) =>
       println(s"User $userId joined Lobby")
       session ! NotifyUserJoin(data.users)
+      session ! SyncLobbyData(userId)
       live(data.joined(userId), session)
   }
 
