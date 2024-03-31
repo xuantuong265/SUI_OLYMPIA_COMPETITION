@@ -1,16 +1,17 @@
 ## Lobby flow
 ![Lobby Flow](lobby-flow.jpeg)
-- Common Message Structure:
+## Common Server Message Structure:
    ```json
    "tpe": <int message type>,
    "data": {
      //Json object
    }
    ```
-   Message types:
-    - 0 - Login Success
-    - 1 - Lobby Message
-    - 2 - Room Message
+   Message types: <br/>
+    - 0 -> Login Success <br/>
+    - 1 -> Lobby Message <br/>
+    - 2 -> Room Message <br/>
+    - 3 -> Room Joined
 
 - Json Message format:
   + Login Success:
@@ -25,15 +26,44 @@
   ```json
     {
           "tpe": 1,
-          data: {
+          "data": {
                "onlineCount": 8,
                "rooms": [
-                 {"roomId": 1,"usersCount": 3, isStarted: False},
-                 {"roomId": 2,"usersCount": 0, isStarted: False},
-                 {"roomId": 3,"usersCount": 0, isStarted: False},
-                 {"roomId": 4,"usersCount": 2, isStarted: False}
+                 {"roomId": 1,"usersCount": 3, "isStarted": false},
+                 {"roomId": 2,"usersCount": 0, "isStarted": false},
+                 {"roomId": 3,"usersCount": 0, "isStarted": false},
+                 {"roomId": 4,"usersCount": 2, "isStarted": false}
                ]
           }
    }
-  ````
   ```
+  + Room joined:
+    ```json
+       {
+         "tpe": 3,
+         "data": {
+            "roomId": <int room ID>,
+            "players": [
+               {"userId":  "abc", "isReady":  false},
+               {"userId":  "def", "isReady":  true}
+            ]
+         }
+       }
+    ```
+## Common Client Message Structure
+   ```json
+      "tpe": <int message type>,
+      "sessionId": <session ID>,
+      "data": {
+          //Json object
+      }
+   ```
+   - Join Room request:
+     ```json
+         "tpe": 3,
+         "sessionId": <session ID>,
+         "data": {
+            roomId: <int room ID>
+         }
+     ```
+   
