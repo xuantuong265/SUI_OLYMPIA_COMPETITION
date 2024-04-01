@@ -1,16 +1,11 @@
 import { io } from "socket.io-client";
 
-import { LoginStorage } from "./localstorage";
-
-const { accessToken } = LoginStorage.getData() || {};
-
 const useSocketIo = () => {
-  const socket = io("", {
-    auth: {
-      token: `Bearer ${accessToken}`,
-    },
+  const socket = io("ws://0220-34-174-1-75.ngrok-free.app/game", {
     transports: ["websocket"],
   });
+  console.log({ socket });
+
   socket.connect();
   return socket;
 };
