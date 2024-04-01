@@ -5,3 +5,14 @@ game-server/demo-client/screenshot.png
 game-server/project/target
 game-server/target
 game-server/.bsp
+game-server/.bloop
+game-server/demo-client/.idea
+game-server/project/.bloop
+game-server/project/project/.bloop
+game-server/project/project/project/target
+game-server/project/project/project/metals.sbt
+game-server/project/project/target
+game-server/project/project/metals.sbt
+game-server/project/project/project/project/target/config-classes
+game-server/project/metals.sbt
+game-server/.metals
