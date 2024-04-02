@@ -9,7 +9,7 @@ import io.circe.syntax.*
 import message.OutgoingMessage.UserId
 import message.{IncomingMessage, OutgoingMessage, SessionMessage}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
-import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import org.apache.pekko.actor.typed.{ActorRef, Behavior, Terminated}
 import org.apache.pekko.http.scaladsl.model.ws.{TextMessage, Message as WSMessage}
 
 import java.time.Instant
@@ -17,7 +17,9 @@ import java.time.Instant
 object UserManager {
   case class UserSession(userId: String, sessionId: String, actorRef: ActorRef[WSMessage])
 
-  type UserMessage = IncomingMessage | OutgoingMessage
+  type UserMessage = IncomingMessage | OutgoingMessage | UserDisconnected
+  
+  case class UserDisconnected(userId: UserId)
 
   case class CreateSession(userId: String, actorRef: ActorRef[WSMessage]) extends IncomingMessage
 
@@ -48,7 +50,9 @@ object UserManager {
     }
   }
 
-  case class Data(onlineUsers: Map[UserId, UserSession], sessions: Map[String, UserId], rooms: Map[String, ActorRef[RoomMessage]]) {
+  case class Data(onlineUsers: Map[UserId, UserSession],
+                  sessions: Map[String, UserId],
+                  rooms: Map[String, ActorRef[RoomMessage]]) {
     def createSession(userId: UserId, ref: ActorRef[WSMessage]): (Data, UserSession) = {
       val sessionId = s"$userId#${Instant.now.getEpochSecond}"
       val newSession = UserSession(userId, sessionId, ref)
@@ -59,11 +63,20 @@ object UserManager {
           this.copy(sessions = sessions + (newSession.sessionId -> userId))
       }
 
-      (updatedData.copy(onlineUsers = onlineUsers + (userId -> newSession)), newSession)
+      updatedData.copy(onlineUsers = onlineUsers + (userId -> newSession)) -> newSession
     }
 
     def addRoom(roomId: String, ref: ActorRef[RoomMessage]): Data = {
       this.copy(rooms = rooms + (roomId -> ref))
+    }
+    
+    def removeSession(userId: UserId): Data = {
+      this.onlineUsers.get(userId) match {
+        case None =>
+          this
+        case Some(session) =>
+          this.copy(onlineUsers = onlineUsers - userId, sessions = sessions - session.sessionId)
+      }
     }
 
   }
@@ -79,15 +92,21 @@ object UserManager {
 
 case class UserManager(lobby: ActorRef[LobbyMessage]) {
 
-  def live(data: Data): Behavior[UserMessage] = Behaviors.setup { context =>
-    Behaviors.receiveMessagePartial {
+  def live(data: Data): Behavior[UserMessage] = Behaviors.receive[UserMessage] { (context, message) =>
+    message match {
       case CreateSession(userId, ref) =>
         val (updatedData, session) = data.createSession(userId, ref)
         lobby ! Join(userId)
         context.self ! LoginSuccess(session)
         println(s"new session created ${session.sessionId}")
+        context.watchWith(ref, UserDisconnected(userId))
         live(updatedData)
 
+      case UserDisconnected(userId) =>
+        context.log.debug(s"User $userId was disconnected")
+        // TODO propagate to Lobby/Rooms
+        live(data.removeSession(userId))
+        
 
       case SessionMessage(sessionId, tpe, None, jsonData) if tpe == 4 => // CREATE ROOM
         if (data.sessions.contains(sessionId)) {
@@ -129,10 +148,8 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
               userSession.actorRef ! out.toWsMessage
         }
         Behaviors.same
-
     }
   }
-
 
 }
 
