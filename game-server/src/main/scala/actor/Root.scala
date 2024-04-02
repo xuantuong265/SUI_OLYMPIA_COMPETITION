@@ -1,6 +1,6 @@
 package actor
 
-import actor.session.UserManager.{CreateSession, SessionMessage}
+import actor.session.UserManager.{CreateSession, UserMessage}
 import actor.session.{Lobby, UserManager}
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
@@ -14,10 +14,11 @@ import org.apache.pekko.stream.scaladsl.{Keep, Sink, Source}
 import org.apache.pekko.stream.typed.scaladsl.ActorSource
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import message.IncomingMessage
 
 object Root {
 
-  private def requestHandler(userManagerRef: ActorRef[SessionMessage])(using actorSystem: ActorSystem[_], ec: ExecutionContextExecutor): HttpRequest => HttpResponse = {
+  private def requestHandler(userManagerRef: ActorRef[UserMessage])(using actorSystem: ActorSystem[_], ec: ExecutionContextExecutor): HttpRequest => HttpResponse = {
     {
       case req@HttpRequest(GET, Uri.Path("/game"), _, _, _) =>
         req.attribute(AttributeKeys.webSocketUpgrade) match {
@@ -36,6 +37,7 @@ object Root {
                 CreateSession.parseUserId(text) match
                   case None =>
                     println(s"Received message $text")
+                    IncomingMessage.parse(text) foreach {m => userManagerRef ! m}
                   case Some(userId) =>
                     userManagerRef ! CreateSession(userId, actorRef)
               case b: BinaryMessage =>

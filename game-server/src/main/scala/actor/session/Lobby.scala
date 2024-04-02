@@ -1,59 +1,100 @@
 package actor.session
 
-import actor.session.UserManager.SessionMessage
+import actor.session.Lobby.{Data, Join, LobbyMessage, Room, RoomCreated, RoomUpdate}
+import actor.session.UserManager.UserMessage
+import io.circe.*
+import io.circe.generic.semiauto.*
+import io.circe.syntax.*
 import message.OutgoingMessage
 import message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
 
-object Lobby {
-  
-  sealed trait LobbyMessage
-  
-  case class Join(userId: String) extends LobbyMessage
-  case class UserManagerGreeting(actorRef: ActorRef[SessionMessage]) extends LobbyMessage
-  
-  case class SyncLobbyData(recipients: List[UserId]) extends OutgoingMessage {
-    override def toWsMessage: Message = TextMessage.Strict(s"""
-        {
-          "tpe": 1,
-          data: {
-               "onlineCount": ${recipients.size},
-               "rooms": [
-                 {"roomId": 1,"usersCount": 3, isStarted: False},
-                 {"roomId": 2,"usersCount": 0, isStarted: False},
-                 {"roomId": 3,"usersCount": 0, isStarted: False},
-                 {"roomId": 4,"usersCount": 2, isStarted: False}
-               ]
-          }
-      }
-      """) // FIXME
-  }
-  
-  case class User(userId: String)
-  
-  case class Data(users: List[User]){
-    def joined(userId: String): Data = {
-      this.copy(users = this.users :+ User(userId))
-    }
-  }
-  
-  def apply(): Behavior[LobbyMessage] = {
-     postStart()
-  }
 
-  private def live(data: Data, session: ActorRef[SessionMessage]): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
+case class Lobby(session: ActorRef[UserMessage]) {
+  private def live(data: Data): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
     case Join(userId) =>
       println(s"User $userId joined Lobby")
-      val updatedData = data.joined(userId)
-      session ! SyncLobbyData(updatedData.users.map(_.userId))
-      live(updatedData, session)
+      val updatedData = data.join(userId)
+      session ! updatedData.syncMessage
+      live(updatedData)
+
+    case RoomCreated(id, name) =>
+      val updatedData = data.addRoom(Room(id, name, userCount = 1, isStarted = false))
+      session ! updatedData.syncMessage
+      live(updatedData)
+
+    case RoomUpdate(id, userCount, isStarted) =>
+      val updatedData = data.updateRoom(id, userCount, isStarted)
+      session ! updatedData.syncMessage
+      live(updatedData)
+
   }
+}
+
+
+object Lobby {
 
   private def postStart(): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
     case UserManagerGreeting(actorRef) =>
       println(s"Greeting from UserManager")
-      live(Data(Nil), actorRef)
+      Lobby(actorRef).live(Data(Nil, Nil))
   }
+
+  sealed trait LobbyMessage
+
+  case class Join(userId: String) extends LobbyMessage
+
+  case class RoomCreated(id: String, name: String) extends LobbyMessage
+
+  case class RoomUpdate(id: String, userCount: Int, isStarted: Boolean) extends LobbyMessage
+
+  case class UserManagerGreeting(actorRef: ActorRef[UserMessage]) extends LobbyMessage
+
+  case class SyncLobbyData(recipients: List[UserId], rooms: List[Room]) extends OutgoingMessage {
+    override def toWsMessage: Message = {
+      val json = Json.obj(
+        "tpe" -> 1.asJson,
+        "data" -> Json.obj(
+          "rooms" -> Json.arr(rooms.asJson)
+        )
+      )
+      TextMessage.Strict(json.noSpaces)
+    }
+  }
+
+  case class User(userId: String)
+
+
+  given roomEncoder: Encoder[Room] = deriveEncoder
+
+  case class Room(id: String, name: String, userCount: Int, isStarted: Boolean) {
+    def update(userCount: Int, isStarted: Boolean): Room =
+      this.copy(userCount = userCount, isStarted = isStarted)
+  }
+
+  case class Data(users: List[User], rooms: List[Room]) {
+    def join(userId: String): Data = {
+      this.copy(users = this.users :+ User(userId))
+    }
+
+    def addRoom(room: Room): Data = this.copy(rooms = rooms :+ room)
+
+    def updateRoom(id: String, userCount: Int, isStarted: Boolean): Data = {
+      this.rooms.partition(_.id == id) match {
+        case (room :: Nil, otherRooms) =>
+          this.copy(rooms = otherRooms :+ room.update(userCount, isStarted))
+        case _ => this
+      }
+    }
+
+    def syncMessage: SyncLobbyData = SyncLobbyData(this.users.map(_.userId), this.rooms)
+  }
+
+  def apply(): Behavior[LobbyMessage] = {
+    postStart()
+  }
+
+
 }

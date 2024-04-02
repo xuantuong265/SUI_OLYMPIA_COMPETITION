@@ -1,22 +1,41 @@
 package actor.session
 
-import actor.session.Lobby.{Join, LobbyMessage, UserManagerGreeting}
-import actor.session.UserManager.{CreateSession, SessionMessage, UserSession}
-import io.circe.Json
-import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import actor.session.Lobby.{Join, LobbyMessage, RoomCreated, UserManagerGreeting}
+import actor.session.Room.{Player, RoomMessage}
+import actor.session.UserManager.*
+import io.circe.*
+import io.circe.generic.auto.*
+import io.circe.syntax.*
+import message.OutgoingMessage.UserId
+import message.{IncomingMessage, OutgoingMessage, SessionMessage}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
-import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
-import io.circe.Encoder.*
-import message.{IncomingMessage, OutgoingMessage}
+import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import org.apache.pekko.http.scaladsl.model.ws.{TextMessage, Message as WSMessage}
 
 import java.time.Instant
 
 object UserManager {
-  case class UserSession(userId: String, sessionId: String, actorRef: ActorRef[Message])
+  case class UserSession(userId: String, sessionId: String, actorRef: ActorRef[WSMessage])
 
-  type SessionMessage = IncomingMessage | OutgoingMessage
+  type UserMessage = IncomingMessage | OutgoingMessage
 
-  case class CreateSession(userId: String, actorRef: ActorRef[Message]) extends IncomingMessage
+  case class CreateSession(userId: String, actorRef: ActorRef[WSMessage]) extends IncomingMessage
+
+  case class LoginSuccess(session: UserSession) extends OutgoingMessage {
+    override def recipients: List[UserId] = List(session.userId)
+
+    override def toWsMessage: WSMessage = {
+      val json = Json.obj(
+        "tpe" -> 0.asJson,
+        "data" -> Json.obj(
+          "sessionId" -> session.sessionId.asJson
+        )
+      )
+      TextMessage.Strict(json.noSpaces)
+    }
+  }
+
+  case class CreateRoom(name: String, ownerId: UserId) extends IncomingMessage
 
   object CreateSession {
     private val PREFIX = "LOGIN-"
@@ -29,10 +48,30 @@ object UserManager {
     }
   }
 
-  def create(lobby: ActorRef[LobbyMessage]): Behavior[SessionMessage] = {
+  case class Data(onlineUsers: Map[UserId, UserSession], sessions: Map[String, UserId], rooms: Map[String, ActorRef[RoomMessage]]) {
+    def createSession(userId: UserId, ref: ActorRef[WSMessage]): (Data, UserSession) = {
+      val sessionId = s"$userId#${Instant.now.getEpochSecond}"
+      val newSession = UserSession(userId, sessionId, ref)
+      val updatedData = onlineUsers.get(userId) match {
+        case Some(existingSession) =>
+          this.copy(sessions = (sessions - existingSession.sessionId) + (newSession.sessionId -> userId))
+        case None =>
+          this.copy(sessions = sessions + (newSession.sessionId -> userId))
+      }
+
+      (updatedData.copy(onlineUsers = onlineUsers + (userId -> newSession)), newSession)
+    }
+
+    def addRoom(roomId: String, ref: ActorRef[RoomMessage]): Data = {
+      this.copy(rooms = rooms + (roomId -> ref))
+    }
+
+  }
+
+  def create(lobby: ActorRef[LobbyMessage]): Behavior[UserMessage] = {
     Behaviors.setup(context =>
       lobby ! UserManagerGreeting(context.self)
-      UserManager(lobby).live(Map.empty)
+      UserManager(lobby).live(Data(Map.empty, Map.empty, Map.empty))
     )
   }
 
@@ -40,33 +79,58 @@ object UserManager {
 
 case class UserManager(lobby: ActorRef[LobbyMessage]) {
 
-  def live(onlineUsers: Map[String, UserSession]): Behavior[SessionMessage] = Behaviors.receiveMessagePartial {
-    case CreateSession(userId, ref) =>
-      // todo : check and override existing session
-      val sessionId = s"$userId#${Instant.now.getEpochSecond}"
-      val newSession = UserSession(userId, sessionId, ref)
-      println(s"new session created $sessionId")
-      val json = Json.obj(
-        "tpe" -> Json.fromInt(0),
-        "data" -> Json.obj(
-           "sessionId" -> Json.fromString(sessionId)
-        )
-      )
-      lobby ! Join(userId)
-      ref ! TextMessage.apply(json.toString)
-      live(onlineUsers + (userId -> newSession))
+  def live(data: Data): Behavior[UserMessage] = Behaviors.setup { context =>
+    Behaviors.receiveMessagePartial {
+      case CreateSession(userId, ref) =>
+        val (updatedData, session) = data.createSession(userId, ref)
+        lobby ! Join(userId)
+        context.self ! LoginSuccess(session)
+        println(s"new session created ${session.sessionId}")
+        live(updatedData)
 
-    case out: OutgoingMessage =>
-      out.recipients.foreach { recipient =>
-        println(s"Sending out message to $recipient")
-        onlineUsers.get(recipient) match
-          case None =>
-            println(s"Error: $recipient not found")
-          case Some(userSession) =>
-            userSession.actorRef ! out.toWsMessage
-      }
-      Behaviors.same
 
+      case SessionMessage(sessionId, tpe, None, jsonData) if tpe == 4 => // CREATE ROOM
+        if (data.sessions.contains(sessionId)) {
+          jsonData("roomName") match {
+            case Some(roomNameJs) =>
+              val roomName = roomNameJs.toString
+              val roomId = s"${101 + data.rooms.size}"
+              val userId = data.sessions(sessionId)
+              val owner = Player.create(userId)
+              val room = context.spawn(Room.create(roomId, roomName, owner, context.self, lobby), s"room-$roomId")
+              val updatedData = data.addRoom(roomId, room)
+              lobby ! RoomCreated(roomId, roomName)
+              live(updatedData)
+            case None =>
+              Behaviors.same
+          }
+        } else {
+          println("Invalid session")
+          Behaviors.same
+        }
+
+
+      case SessionMessage(sessionId, tpe, Some(roomId), _) if tpe == 3 =>
+        // TODO verify sessionId
+        val userId = data.sessions(sessionId)
+        data.rooms.get(roomId) foreach { roomRef =>
+          roomRef ! Room.Join(userId)
+        }
+        Behaviors.same
+
+
+      case out: OutgoingMessage =>
+        out.recipients.foreach { recipient =>
+          println(s"Sending out message to $recipient")
+          data.onlineUsers.get(recipient) match
+            case None =>
+              println(s"Error: $recipient not found")
+            case Some(userSession) =>
+              userSession.actorRef ! out.toWsMessage
+        }
+        Behaviors.same
+
+    }
   }
 
 
