@@ -1,5 +1,5 @@
 ## Lobby flow
-![Lobby Flow](lobby-flow.jpeg)
+![Lobby Flow](lobby-flow.png)
 ## Common Server Message Structure:
    ```json
    "tpe": <int message type>,
@@ -66,4 +66,13 @@
             roomId: <int room ID>
          }
      ```
+
+   - Create Room request:
+      ```json
+          "tpe": 4,
+          "sessionId": <session ID>,
+          "data": {
+             "roomName": <room Name>
+         }
+      ```
    

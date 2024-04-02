@@ -1,6 +1,6 @@
 package actor.session
 
-import actor.session.UserManager.SessionMessage
+import actor.session.UserManager.UserMessage
 import message.OutgoingMessage
 import message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
@@ -12,7 +12,7 @@ object Lobby {
   sealed trait LobbyMessage
   
   case class Join(userId: String) extends LobbyMessage
-  case class UserManagerGreeting(actorRef: ActorRef[SessionMessage]) extends LobbyMessage
+  case class UserManagerGreeting(actorRef: ActorRef[UserMessage]) extends LobbyMessage
   
   case class SyncLobbyData(recipients: List[UserId]) extends OutgoingMessage {
     override def toWsMessage: Message = TextMessage.Strict(s"""
@@ -43,7 +43,7 @@ object Lobby {
      postStart()
   }
 
-  private def live(data: Data, session: ActorRef[SessionMessage]): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
+  private def live(data: Data, session: ActorRef[UserMessage]): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
     case Join(userId) =>
       println(s"User $userId joined Lobby")
       val updatedData = data.joined(userId)
