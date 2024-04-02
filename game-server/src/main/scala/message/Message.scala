@@ -1,14 +1,10 @@
 package message
 
+import io.circe.{Decoder, JsonObject}
+import io.circe.generic.semiauto.*
+import io.circe.jawn.decode
 import message.OutgoingMessage.UserId
 import org.apache.pekko.http.scaladsl.model.ws
-import io.circe.JsonObject
-import io.circe.generic.semiauto._
-import io.circe.Parser
-import actor.session.UserManager.CreateSession
-import io.circe.jawn.decode
-import io.circe.DerivedDecoder
-import io.circe.Decoder
 
 trait IncomingMessage
 

@@ -27,12 +27,11 @@
     {
           "tpe": 1,
           "data": {
-               "onlineCount": 8,
                "rooms": [
-                 {"roomId": 1,"usersCount": 3, "isStarted": false},
-                 {"roomId": 2,"usersCount": 0, "isStarted": false},
-                 {"roomId": 3,"usersCount": 0, "isStarted": false},
-                 {"roomId": 4,"usersCount": 2, "isStarted": false}
+                 {"id": 1,"name": "room name", "usersCount": 3, "isStarted": false},
+                 {"id": 2,"name": "room name", "usersCount": 0, "isStarted": false},
+                 {"id": 3,"name": "room name","usersCount": 0, "isStarted": false},
+                 {"id": 4,"name": "room name","usersCount": 2, "isStarted": false}
                ]
           }
    }
