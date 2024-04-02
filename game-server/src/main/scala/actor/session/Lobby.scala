@@ -57,7 +57,7 @@ object Lobby {
       val json = Json.obj(
         "tpe" -> 1.asJson,
         "data" -> Json.obj(
-          "rooms" -> Json.arr(rooms.asJson)
+          "rooms" -> rooms.asJson
         )
       )
       TextMessage.Strict(json.noSpaces)
