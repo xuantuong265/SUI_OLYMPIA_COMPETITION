@@ -27,6 +27,7 @@
     {
           "tpe": 1,
           "data": {
+               "userCount": 3,
                "rooms": [
                  {"id": 1,"name": "room name", "usersCount": 3, "isStarted": false},
                  {"id": 2,"name": "room name", "usersCount": 0, "isStarted": false},

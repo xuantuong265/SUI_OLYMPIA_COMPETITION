@@ -10,6 +10,7 @@ import message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
+import actor.session.Lobby.UserLeftLobby
 
 case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage], lobby: ActorRef[LobbyMessage]) {
   def live(data: Data): Behavior[RoomMessage] = Behaviors.receiveMessage({
@@ -17,6 +18,7 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
       println(s"UserId $userId joined room ${data.name}")
       val updatedData = data.userJoin(userId)
       session ! JoinSuccess(updatedData.players, roomId)
+      lobby ! UserLeftLobby(userId)
       lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = false)
       live(data.userJoin(userId))
     case Ready(userId) =>

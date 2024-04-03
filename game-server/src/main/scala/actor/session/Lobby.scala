@@ -10,6 +10,7 @@ import message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
+import actor.session.Lobby.UserLeftLobby
 
 
 case class Lobby(session: ActorRef[UserMessage]) {
@@ -24,6 +25,13 @@ case class Lobby(session: ActorRef[UserMessage]) {
       val updatedData = data.addRoom(Room(id, name, userCount = 1, isStarted = false))
       session ! updatedData.syncMessage
       live(updatedData)
+
+    case UserLeftLobby(id) =>
+      println(s"user $id left Lobby")
+      val updatedData = data.leave(id)
+      session ! updatedData.syncMessage
+      live(updatedData)
+
 
     case RoomUpdate(id, userCount, isStarted) =>
       val updatedData = data.updateRoom(id, userCount, isStarted)
@@ -50,6 +58,8 @@ object Lobby {
 
   case class RoomUpdate(id: String, userCount: Int, isStarted: Boolean) extends LobbyMessage
 
+  case class UserLeftLobby(id: UserId) extends LobbyMessage
+
   case class UserManagerGreeting(actorRef: ActorRef[UserMessage]) extends LobbyMessage
 
   case class SyncLobbyData(recipients: List[UserId], rooms: List[Room]) extends OutgoingMessage {
@@ -57,6 +67,7 @@ object Lobby {
       val json = Json.obj(
         "tpe" -> 1.asJson,
         "data" -> Json.obj(
+          "userCount" -> recipients.size.asJson,
           "rooms" -> rooms.asJson
         )
       )
@@ -75,8 +86,12 @@ object Lobby {
   }
 
   case class Data(users: List[User], rooms: List[Room]) {
-    def join(userId: String): Data = {
+    def join(userId: UserId): Data = {
       this.copy(users = this.users :+ User(userId))
+    }
+
+    def leave(userId: UserId): Data  = {
+      this.copy(users = this.users.filterNot(_.userId == userId))
     }
 
     def addRoom(room: Room): Data = this.copy(rooms = rooms :+ room)
