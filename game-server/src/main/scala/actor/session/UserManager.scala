@@ -140,7 +140,7 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
 
       case out: OutgoingMessage =>
         out.recipients.foreach { recipient =>
-          println(s"Sending out message to $recipient")
+          println(s"Sending out message to $recipient:\n${out.toWsMessage}")
           data.onlineUsers.get(recipient) match
             case None =>
               println(s"Error: $recipient not found")
