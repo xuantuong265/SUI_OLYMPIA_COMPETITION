@@ -17,7 +17,7 @@
   + Login Success:
       ```json
         {
-              "tpe": 1,
+              "tpe": 0,
               data: {
                    "sessionId": "3asdff#asd",
               }
