@@ -1,7 +1,7 @@
 package actor
 
-import actor.session.UserManager.{CreateSession, UserMessage}
 import actor.session.{Lobby, UserManager}
+import actor.session.UserManager.UserMessage
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior, PostStop}
@@ -12,9 +12,8 @@ import org.apache.pekko.http.scaladsl.model.{AttributeKeys, HttpRequest, HttpRes
 import org.apache.pekko.stream.OverflowStrategy
 import org.apache.pekko.stream.scaladsl.{Keep, Sink, Source}
 import org.apache.pekko.stream.typed.scaladsl.ActorSource
-
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import message.IncomingMessage
+import message.*
 
 object Root {
 
@@ -24,9 +23,7 @@ object Root {
         req.attribute(AttributeKeys.webSocketUpgrade) match {
           case Some(upgrade) =>
             lazy val (actorRef, publisher) = ActorSource.actorRef[Message](
-                completionMatcher = {
-                  case b: BinaryMessage =>
-                },
+                completionMatcher = PartialFunction.empty,
                 bufferSize = 200,
                 failureMatcher = PartialFunction.empty,
                 overflowStrategy = OverflowStrategy.fail)
@@ -37,7 +34,7 @@ object Root {
                 CreateSession.parseUserId(text) match
                   case None =>
                     println(s"Received message $text")
-                    IncomingMessage.parse(text) foreach {m => userManagerRef ! m}
+                    SessionMessage.parse(text) foreach {m => userManagerRef ! m}
                   case Some(userId) =>
                     userManagerRef ! CreateSession(userId, actorRef)
               case b: BinaryMessage =>

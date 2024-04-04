@@ -21,15 +21,33 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
       lobby ! UserLeftLobby(userId)
       lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = false)
       live(data.userJoin(userId))
+
     case Ready(userId) =>
-      live(data.userReady(userId))
+      val updatedData = data.userReady(userId)
+      if (updatedData.canStart) {
+        println("Start game")
+        // TODO notify client
+        gameStarted(updatedData)
+      } else {
+        println(s"User $userId is ready")
+        session ! UserReady(userId, updatedData.allUserIds)
+        live(updatedData)
+      }
   })
+
+
+  def gameStarted(data: Data): Behavior[RoomMessage] = Behaviors.receiveMessage(
+     ???
+    )
 }
 
 object Room {
   private val MAX_PLAYERS = 3
 
   case class Data(name: String, players: List[Player], spectators: List[Spectator]) {
+
+    def canStart: Boolean = this.players.forall(_.isReady)
+
     def userJoin(userId: UserId): Data = {
       if (players.size == MAX_PLAYERS) {
         this.copy(spectators = this.spectators :+ Spectator(userId))
@@ -76,13 +94,24 @@ object Room {
 
     override def toWsMessage: Message = {
       val json = Json.obj(
-        "tpe" -> 3.asJson,
+        "tpe" -> OutgoingMessage.USER_JOINED_ROOM.asJson,
         "data" -> Json.obj(
           "roomId" -> roomId.asJson,
           "players" -> Json.arr(players.map(_.asJson): _*)
         )
       )
       TextMessage.Strict(json.noSpaces)
+    }
+  }
+
+  case class UserReady(userId: UserId, recipients: List[UserId]) extends OutgoingMessage{
+    override def toWsMessage: Message = {
+      TextMessage.Strict(Json.obj(
+        "tpe" -> OutgoingMessage.USER_READY.asJson,
+        "data" -> Json.obj(
+           "userId" -> userId.asJson
+         )
+        ).noSpaces)
     }
   }
 

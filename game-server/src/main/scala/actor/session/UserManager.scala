@@ -11,17 +11,17 @@ import message.{IncomingMessage, OutgoingMessage, SessionMessage}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior, Terminated}
 import org.apache.pekko.http.scaladsl.model.ws.{TextMessage, Message as WSMessage}
-
+import message.UserRequest
 import java.time.Instant
+import message.CreateSession
 
 object UserManager {
   case class UserSession(userId: String, sessionId: String, actorRef: ActorRef[WSMessage])
 
+
   type UserMessage = IncomingMessage | OutgoingMessage | UserDisconnected
   
   case class UserDisconnected(userId: UserId)
-
-  case class CreateSession(userId: String, actorRef: ActorRef[WSMessage]) extends IncomingMessage
 
   case class LoginSuccess(session: UserSession) extends OutgoingMessage {
     override def recipients: List[UserId] = List(session.userId)
@@ -37,18 +37,7 @@ object UserManager {
     }
   }
 
-  case class CreateRoom(name: String, ownerId: UserId) extends IncomingMessage
 
-  object CreateSession {
-    private val PREFIX = "LOGIN-"
-    private val userIdRegex = s"$PREFIX(\\w+)".r
-
-    def parseUserId(text: String): Option[String] = {
-      userIdRegex.findFirstMatchIn(text).map(matched =>
-        matched.group(1)
-      )
-    }
-  }
 
   case class Data(onlineUsers: Map[UserId, UserSession],
                   sessions: Map[String, UserId],
@@ -106,34 +95,34 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
         context.log.debug(s"User $userId was disconnected")
         // TODO propagate to Lobby/Rooms
         live(data.removeSession(userId))
-        
 
-      case SessionMessage(sessionId, tpe, None, jsonData) if tpe == 4 => // CREATE ROOM
-        if (data.sessions.contains(sessionId)) {
-          jsonData("roomName") match {
-            case Some(roomNameJs) =>
-              val roomName = roomNameJs.toString
-              val roomId = s"${101 + data.rooms.size}"
-              val userId = data.sessions(sessionId)
-              val owner = Player.create(userId)
-              val room = context.spawn(Room.create(roomId, roomName, owner, context.self, lobby), s"room-$roomId")
-              val updatedData = data.addRoom(roomId, room)
-              lobby ! RoomCreated(roomId, roomName)
-              live(updatedData)
-            case None =>
-              Behaviors.same
-          }
-        } else {
-          println("Invalid session")
-          Behaviors.same
+      case SessionMessage(sessionId, roomId, tpe, jsonData) =>
+        data.sessions.get(sessionId) match {
+          case None =>
+            context.log.warn(s"Received not authenticated message with session Id : $sessionId")
+          case Some(userId) =>
+            context.self ! UserRequest(userId, tpe, roomId, jsonData)
         }
+        Behaviors.same
 
 
-      case SessionMessage(sessionId, tpe, Some(roomId), _) if tpe == 3 =>
-        // TODO verify sessionId
-        val userId = data.sessions(sessionId)
+      case UserRequest.CreateRoom(userId, roomName) =>
+          val roomId = s"${101 + data.rooms.size}"
+          val owner = Player.create(userId)
+          val room = context.spawn(Room.create(roomId, roomName, owner, context.self, lobby), s"room-$roomId")
+          val updatedData = data.addRoom(roomId, room)
+          lobby ! RoomCreated(roomId, roomName)
+          live(updatedData)
+
+      case UserRequest.JoinRoom(userId, roomId) =>
         data.rooms.get(roomId) foreach { roomRef =>
           roomRef ! Room.Join(userId)
+        }
+        Behaviors.same
+
+      case UserRequest.Ready(userId, roomId) =>
+        data.rooms.get(roomId) foreach { roomRef =>
+          roomRef ! Room.Ready(userId)
         }
         Behaviors.same
 
