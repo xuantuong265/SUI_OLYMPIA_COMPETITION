@@ -12,6 +12,7 @@
     - 1 -> Lobby Message <br/>
     - 2 -> Room Message <br/>
     - 3 -> Room Joined
+    - 5 -> User Ready
 
 - Json Message format:
   + Login Success:
@@ -49,6 +50,16 @@
             ]
          }
        }
+   + User Ready
+
+     ```json
+     {
+       "tpe": 5,
+       "data": {
+         "userId": <userId>
+       }
+     }
+     ```
     ```
 ## Common Client Message Structure
    ```json
@@ -75,4 +86,12 @@
              "roomName": <room Name>
          }
       ```
+
+
+   -  Ready request:
+      ```json
+          "tpe": 5,
+          "sessionId": <session ID>,
+          "roomId": <roomId>
+         }
    
