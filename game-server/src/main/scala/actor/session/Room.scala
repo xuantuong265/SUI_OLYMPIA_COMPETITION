@@ -26,7 +26,8 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
       val updatedData = data.userReady(userId)
       if (updatedData.canStart) {
         println("Start game")
-        // TODO notify client
+        session ! GameStart(updatedData.allUserIds)
+        lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = true)
         gameStarted(updatedData)
       } else {
         println(s"User $userId is ready")
@@ -36,9 +37,9 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
   })
 
 
-  def gameStarted(data: Data): Behavior[RoomMessage] = Behaviors.receiveMessage(
-     ???
-    )
+  def gameStarted(data: Data): Behavior[RoomMessage] = Behaviors.receiveMessagePartial({
+    case _ => Behaviors.same
+  })
 }
 
 object Room {
@@ -111,6 +112,14 @@ object Room {
         "data" -> Json.obj(
            "userId" -> userId.asJson
          )
+        ).noSpaces)
+    }
+  }
+
+  case class GameStart(recipients: List[UserId]) extends OutgoingMessage {
+    override val toWsMessage: Message = {
+      TextMessage.Strict(Json.obj(
+        "tpe" -> OutgoingMessage.GAME_START.asJson,
         ).noSpaces)
     }
   }

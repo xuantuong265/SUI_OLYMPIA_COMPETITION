@@ -13,6 +13,7 @@
     - 2 -> Room Message <br/>
     - 3 -> Room Joined
     - 5 -> User Ready
+    - 6 -> Game Started
 
 - Json Message format:
   + Login Success:

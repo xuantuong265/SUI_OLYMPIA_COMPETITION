@@ -81,6 +81,7 @@ object OutgoingMessage  {
   type UserId = String
   val USER_JOINED_ROOM = 3
   val USER_READY = 5
+  val GAME_START = 6
 }
 
 trait OutgoingMessage {
