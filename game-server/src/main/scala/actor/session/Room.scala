@@ -13,27 +13,29 @@ import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
 import actor.session.Lobby.UserLeftLobby
 
 case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage], lobby: ActorRef[LobbyMessage]) {
-  def live(data: Data): Behavior[RoomMessage] = Behaviors.receiveMessage({
-    case Join(userId) =>
-      println(s"UserId $userId joined room ${data.name}")
-      val updatedData = data.userJoin(userId)
-      session ! JoinSuccess(updatedData.players, roomId)
-      lobby ! UserLeftLobby(userId)
-      lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = false)
-      live(data.userJoin(userId))
+  def live(data: Data): Behavior[RoomMessage] = Behaviors.receive({ case (context, message) =>
+    message match {
+       case Join(userId) =>
+         context.log.debug(s"UserId $userId joined room ${data.name}")
+         val updatedData = data.userJoin(userId)
+         session ! JoinSuccess(updatedData.players, roomId)
+         lobby ! UserLeftLobby(userId)
+         lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = false)
+         live(data.userJoin(userId))
 
-    case Ready(userId) =>
-      val updatedData = data.userReady(userId)
-      if (updatedData.canStart) {
-        println("Start game")
-        session ! GameStart(updatedData.allUserIds)
-        lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = true)
-        gameStarted(updatedData)
-      } else {
-        println(s"User $userId is ready")
-        session ! UserReady(userId, updatedData.allUserIds)
-        live(updatedData)
-      }
+       case Ready(userId) =>
+         val updatedData = data.userReady(userId)
+         if (updatedData.canStart) {
+           context.log.debug("Start game")
+           session ! GameStart(updatedData.allUserIds)
+           lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = true)
+           gameStarted(updatedData)
+         } else {
+           context.log.debug(s"User $userId is ready")
+           session ! UserReady(userId, updatedData.allUserIds)
+           live(updatedData)
+         }
+    }
   })
 
 

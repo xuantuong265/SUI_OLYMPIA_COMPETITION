@@ -111,11 +111,13 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
           val owner = Player.create(userId)
           val room = context.spawn(Room.create(roomId, roomName, owner, context.self, lobby), s"room-$roomId")
           val updatedData = data.addRoom(roomId, room)
+          context.log.info(s"Created room with id: $roomId.")
           lobby ! RoomCreated(roomId, roomName)
           live(updatedData)
 
       case UserRequest.JoinRoom(userId, roomId) =>
         data.rooms.get(roomId) foreach { roomRef =>
+          context.log.debug(s"user $userId joining room $roomId")
           roomRef ! Room.Join(userId)
         }
         Behaviors.same
@@ -129,7 +131,7 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
 
       case out: OutgoingMessage =>
         out.recipients.foreach { recipient =>
-          println(s"Sending out message to $recipient:\n${out.toWsMessage}")
+          println(s"out <-- $recipient: ${out.toWsMessage}")
           data.onlineUsers.get(recipient) match
             case None =>
               println(s"Error: $recipient not found")
