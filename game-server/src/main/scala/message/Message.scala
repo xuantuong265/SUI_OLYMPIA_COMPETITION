@@ -22,8 +22,8 @@ object UserRequest {
     def unapply(req: UserRequest): Option[(UserId, String)] = {
       if (req.tpe == JOIN_ROOM) {
         req.data.flatMap(json =>
-            json("roomId").map(roomId =>
-              (req.userId, roomId.toString)
+            json("roomId").flatMap(_.asString).map(roomId =>
+              (req.userId, roomId)
             )
         )
       } else None
