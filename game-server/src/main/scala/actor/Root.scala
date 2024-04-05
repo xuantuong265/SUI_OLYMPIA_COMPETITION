@@ -1,7 +1,5 @@
 package actor
 
-import actor.session.{Lobby, UserManager}
-import actor.session.UserManager.UserMessage
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior, PostStop}
@@ -14,6 +12,8 @@ import org.apache.pekko.stream.scaladsl.{Keep, Sink, Source}
 import org.apache.pekko.stream.typed.scaladsl.ActorSource
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import message.*
+import actor.UserManager.UserMessage
+import actor.lobby.Lobby
 
 object Root {
 

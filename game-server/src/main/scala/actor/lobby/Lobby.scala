@@ -1,7 +1,5 @@
-package actor.session
+package actor.lobby
 
-import actor.session.Lobby.{Data, Join, LobbyMessage, Room, RoomCreated, RoomUpdate}
-import actor.session.UserManager.UserMessage
 import io.circe.*
 import io.circe.generic.semiauto.*
 import io.circe.syntax.*
@@ -10,7 +8,8 @@ import message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
-import actor.session.Lobby.UserLeftLobby
+import actor.lobby.Lobby.*
+import actor.UserManager.UserMessage
 
 
 case class Lobby(session: ActorRef[UserMessage]) {
@@ -62,7 +61,7 @@ object Lobby {
 
   case class UserManagerGreeting(actorRef: ActorRef[UserMessage]) extends LobbyMessage
 
-  case class SyncLobbyData(recipients: List[UserId], rooms: List[Room]) extends OutgoingMessage {
+  private[lobby] case class SyncLobbyData(recipients: List[UserId], rooms: List[Room]) extends OutgoingMessage {
     override def toWsMessage: Message = {
       val json = Json.obj(
         "tpe" -> 1.asJson,
@@ -75,17 +74,17 @@ object Lobby {
     }
   }
 
-  case class User(userId: String)
+  private[lobby] case class User(userId: String)
 
 
   given roomEncoder: Encoder[Room] = deriveEncoder
 
-  case class Room(id: String, name: String, userCount: Int, isStarted: Boolean) {
+  private[lobby] case class Room(id: String, name: String, userCount: Int, isStarted: Boolean) {
     def update(userCount: Int, isStarted: Boolean): Room =
       this.copy(userCount = userCount, isStarted = isStarted)
   }
 
-  case class Data(users: List[User], rooms: List[Room]) {
+  private case class Data(users: List[User], rooms: List[Room]) {
     def join(userId: UserId): Data = {
       this.copy(users = this.users :+ User(userId))
     }

@@ -1,8 +1,5 @@
-package actor.session
+package actor.room
 
-import actor.session.Lobby.{LobbyMessage, RoomUpdate}
-import actor.session.Room.*
-import actor.session.UserManager.UserMessage
 import io.circe.*
 import io.circe.syntax.*
 import message.OutgoingMessage
@@ -10,12 +7,15 @@ import message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
-import actor.session.Lobby.UserLeftLobby
+import actor.lobby.Lobby.*
+import actor.UserManager.UserMessage
+import actor.room.Room.RoomMessage
+import actor.room.Room.*
 
 case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage], lobby: ActorRef[LobbyMessage]) {
   def live(data: Data): Behavior[RoomMessage] = Behaviors.receive({ case (context, message) =>
     message match {
-       case Join(userId) =>
+       case JoinRoom(userId) =>
          context.log.debug(s"UserId $userId joined room ${data.name}")
          val updatedData = data.userJoin(userId)
          session ! JoinSuccess(updatedData.players, roomId)
@@ -47,7 +47,7 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
 object Room {
   private val MAX_PLAYERS = 3
 
-  case class Data(name: String, players: List[Player], spectators: List[Spectator]) {
+  private[room] case class Data(name: String, players: List[Player], spectators: List[Spectator]) {
 
     def canStart: Boolean = this.players.forall(_.isReady)
 
@@ -71,7 +71,7 @@ object Room {
     }
   }
 
-  case class Player private(userId: UserId, isReady: Boolean, score: Int) {
+  private[room] case class Player private(userId: UserId, isReady: Boolean, score: Int) {
     def ready: Player = this.copy(isReady = true)
     
     def asJson: Json = Json.obj(
@@ -84,13 +84,13 @@ object Room {
     def create(userId: UserId): Player = Player(userId,  isReady = false, score = 0)
   }
 
-  case class Spectator(userId: UserId)
+  private[room] case class Spectator(userId: UserId)
 
   sealed trait RoomMessage
 
   case class Ready(userId: UserId) extends RoomMessage
 
-  case class Join(userId: UserId) extends RoomMessage
+  case class JoinRoom(userId: UserId) extends RoomMessage
 
   case class JoinSuccess(players: List[Player], roomId: String) extends OutgoingMessage {
     override def recipients: List[UserId] = players.map(_.userId)

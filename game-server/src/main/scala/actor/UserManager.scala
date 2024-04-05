@@ -1,8 +1,5 @@
-package actor.session
+package actor
 
-import actor.session.Lobby.{Join, LobbyMessage, RoomCreated, UserManagerGreeting}
-import actor.session.Room.{Player, RoomMessage}
-import actor.session.UserManager.*
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.syntax.*
@@ -14,6 +11,14 @@ import org.apache.pekko.http.scaladsl.model.ws.{TextMessage, Message as WSMessag
 import message.UserRequest
 import java.time.Instant
 import message.CreateSession
+import actor.room.Room.RoomMessage
+import actor.lobby.Lobby.*
+import actor.UserManager.UserMessage
+import actor.UserManager.UserDisconnected
+import actor.UserManager.*
+import actor.lobby.Lobby.*
+import actor.room.Room
+import actor.room.Room.Player
 
 object UserManager {
   case class UserSession(userId: String, sessionId: String, actorRef: ActorRef[WSMessage])
@@ -118,7 +123,7 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
       case UserRequest.JoinRoom(userId, roomId) =>
         data.rooms.get(roomId) foreach { roomRef =>
           context.log.debug(s"user $userId joining room $roomId")
-          roomRef ! Room.Join(userId)
+          roomRef ! Room.JoinRoom(userId)
         }
         Behaviors.same
 
