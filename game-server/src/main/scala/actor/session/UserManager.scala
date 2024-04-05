@@ -137,6 +137,10 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
               userSession.actorRef ! out.toWsMessage
         }
         Behaviors.same
+
+      case m@ _ =>
+        context.log.warn(s"unhandled message $m")
+        Behaviors.same
     }
   }
 
