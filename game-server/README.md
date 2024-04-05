@@ -57,7 +57,8 @@
      {
        "tpe": 5,
        "data": {
-         "userId": <userId>
+         "userId": <userId>,
+         "userReady": true
        }
      }
      ```

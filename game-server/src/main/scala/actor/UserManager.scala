@@ -129,7 +129,7 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
 
       case UserRequest.Ready(userId, roomId) =>
         data.rooms.get(roomId) foreach { roomRef =>
-          roomRef ! Room.Ready(userId)
+          roomRef ! Room.ReadyToggle(userId)
         }
         Behaviors.same
 

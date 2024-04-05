@@ -23,8 +23,8 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
          lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = false)
          live(data.userJoin(userId))
 
-       case Ready(userId) =>
-         val updatedData = data.userReady(userId)
+       case ReadyToggle(userId) =>
+         val (updatedData, isReady) = data.userReadyToggle(userId)
          if (updatedData.canStart) {
            context.log.debug("Start game")
            session ! GameStart(updatedData.allUserIds)
@@ -32,7 +32,7 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
            gameStarted(updatedData)
          } else {
            context.log.debug(s"User $userId is ready")
-           session ! UserReady(userId, updatedData.allUserIds)
+           session ! UserReadyToggle(userId, isReady, updatedData.allUserIds)
            live(updatedData)
          }
     }
@@ -61,18 +61,18 @@ object Room {
     
     def allUserIds: List[UserId] = this.players.map(_.userId) ++ this.spectators.map(_.userId)
 
-    def userReady(userId: UserId): Data = {
+    def userReadyToggle(userId: UserId): (Data, Boolean) = {
       this.players.find(_.userId == userId) match {
-        case None => this
+        case None => throw new RuntimeException(s"userId not found $userId")
         case Some(player) =>
-          val updatedPlayers = players.filterNot(_.userId == userId) :+ player.ready
-          this.copy(players = updatedPlayers)
+          val updatedPlayers = players.filterNot(_.userId == userId) :+ player.readyToggle
+          (this.copy(players = updatedPlayers), !player.isReady)
       }
     }
   }
 
   private[room] case class Player private(userId: UserId, isReady: Boolean, score: Int) {
-    def ready: Player = this.copy(isReady = true)
+    def readyToggle: Player = this.copy(isReady = !isReady)
     
     def asJson: Json = Json.obj(
       "userId" -> userId.asJson,
@@ -88,7 +88,7 @@ object Room {
 
   sealed trait RoomMessage
 
-  case class Ready(userId: UserId) extends RoomMessage
+  case class ReadyToggle(userId: UserId) extends RoomMessage
 
   case class JoinRoom(userId: UserId) extends RoomMessage
 
@@ -107,12 +107,13 @@ object Room {
     }
   }
 
-  case class UserReady(userId: UserId, recipients: List[UserId]) extends OutgoingMessage{
+  case class UserReadyToggle(userId: UserId, isReady: Boolean, recipients: List[UserId]) extends OutgoingMessage{
     override def toWsMessage: Message = {
       TextMessage.Strict(Json.obj(
         "tpe" -> OutgoingMessage.USER_READY.asJson,
         "data" -> Json.obj(
-           "userId" -> userId.asJson
+           "userId" -> userId.asJson,
+           "isReady" -> isReady.asJson
          )
         ).noSpaces)
     }
