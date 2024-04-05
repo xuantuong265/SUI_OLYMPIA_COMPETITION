@@ -34,8 +34,8 @@ object UserRequest {
     def unapply(req: UserRequest): Option[(UserId, String)] = {
       if (req.tpe == CREATE_ROOM) {
         req.data.flatMap(json =>
-            json("roomName").map(roomName =>
-              (req.userId, roomName.toString)
+            json("roomName").flatMap(_.asString).map(roomName =>
+              (req.userId, roomName)
             )
         )
       } else None
