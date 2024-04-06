@@ -82,6 +82,7 @@ object OutgoingMessage  {
   val USER_JOINED_ROOM = 3
   val USER_READY = 5
   val GAME_START = 6
+  val NEW_ROUND = 7
 }
 
 trait OutgoingMessage {
