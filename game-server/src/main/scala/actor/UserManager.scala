@@ -1,24 +1,31 @@
 package actor
 
+import actor.UserManager.UserDisconnected
+import actor.UserManager.UserMessage
+import actor.UserManager.*
+import actor.lobby.Lobby.*
+import actor.lobby.Lobby.*
+import actor.message.IncomingMessage
+import actor.message.OutgoingMessage
+import actor.message.OutgoingMessage.UserId
+import actor.message.SessionMessage
+import actor.message.UserRequest
+import actor.room.Room
+import actor.room.Room.Player
+import actor.room.Room.RoomMessage
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.syntax.*
-import message.OutgoingMessage.UserId
-import message.{IncomingMessage, OutgoingMessage, SessionMessage}
+import org.apache.pekko.actor.typed.ActorRef
+import org.apache.pekko.actor.typed.Behavior
+import org.apache.pekko.actor.typed.Terminated
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
-import org.apache.pekko.actor.typed.{ActorRef, Behavior, Terminated}
-import org.apache.pekko.http.scaladsl.model.ws.{TextMessage, Message as WSMessage}
-import message.UserRequest
+import org.apache.pekko.http.scaladsl.model.ws.TextMessage
+import org.apache.pekko.http.scaladsl.model.ws.{Message => WSMessage}
+
 import java.time.Instant
+
 import message.CreateSession
-import actor.room.Room.RoomMessage
-import actor.lobby.Lobby.*
-import actor.UserManager.UserMessage
-import actor.UserManager.UserDisconnected
-import actor.UserManager.*
-import actor.lobby.Lobby.*
-import actor.room.Room
-import actor.room.Room.Player
 
 object UserManager {
   case class UserSession(userId: String, sessionId: String, actorRef: ActorRef[WSMessage])

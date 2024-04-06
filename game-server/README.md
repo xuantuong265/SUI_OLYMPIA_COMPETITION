@@ -94,6 +94,7 @@
       ```json
           "tpe": 5,
           "sessionId": <session ID>,
-          "roomId": <roomId>
+          "roomId": <roomId>,
+          "data": <json object>
          }
    

@@ -2,8 +2,8 @@ package actor.room
 
 import io.circe.*
 import io.circe.syntax.*
-import message.OutgoingMessage
-import message.OutgoingMessage.UserId
+import actor.message.OutgoingMessage
+import actor.message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
@@ -45,6 +45,10 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
     case NextRound =>
       session ! data.currentRoundData
       Behaviors.same
+
+    case PlayerReply(userId, answer) =>
+      context.log.debug(s"Player $userId send answer $answer")
+      gameStarted(data.addReply(Reply(userId, answer)))
   })
 }
 
@@ -114,7 +118,7 @@ object Room {
   private[room] case class Spectator(userId: UserId)
 
 
-  private[room] sealed trait Answer {
+  private[actor] sealed trait Answer {
     def text: String
     def id: Int
     override def hashCode(): Int = this.id
@@ -125,6 +129,14 @@ object Room {
   }
 
   object Answer {
+
+    def parse(id: Int): Option[Answer] = id match {
+       case CorrectAnswer.A.id => Some(CorrectAnswer.A)
+       case CorrectAnswer.B.id => Some(CorrectAnswer.B)
+       case CorrectAnswer.C.id => Some(CorrectAnswer.C)
+       case CorrectAnswer.D.id => Some(CorrectAnswer.D)
+       case _ => None
+    }
 
     case class A(text: String) extends Answer {
        override val id: Int = 1
@@ -179,7 +191,9 @@ object Room {
     private def currentQuestion: Question = questions.head
 
     def addReply(reply: Reply): PlayData = {
-      this.copy(replies = replies :+ reply)
+      if (replies.exists(_.userId == reply.userId)){
+        this
+      } else this.copy(replies = replies :+ reply)
     }
 
     private def findRoundWinner: Option[UserId] = {
@@ -210,6 +224,8 @@ object Room {
   case class JoinRoom(userId: UserId) extends RoomMessage
 
   case object NextRound extends RoomMessage
+
+  case class PlayerReply(userId: UserId, answer: Answer) extends RoomMessage
 
   case class JoinSuccess(players: List[Player], roomId: String) extends OutgoingMessage {
     override def recipients: List[UserId] = players.map(_.userId)

@@ -3,8 +3,8 @@ package actor.lobby
 import io.circe.*
 import io.circe.generic.semiauto.*
 import io.circe.syntax.*
-import message.OutgoingMessage
-import message.OutgoingMessage.UserId
+import actor.message.OutgoingMessage
+import actor.message.OutgoingMessage.UserId
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.http.scaladsl.model.ws.{Message, TextMessage}
