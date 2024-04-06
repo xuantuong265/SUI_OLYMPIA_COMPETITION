@@ -11,9 +11,10 @@
     - 0 -> Login Success <br/>
     - 1 -> Lobby Message <br/>
     - 2 -> Room Message <br/>
-    - 3 -> Room Joined
-    - 5 -> User Ready
-    - 6 -> Game Started
+    - 3 -> Room Joined <br/>
+    - 5 -> User Ready <br/>
+    - 6 -> Game Started <br/>
+    - 7 -> New round (new question)<br/>
 
 - Json Message format:
   + Login Success:
@@ -52,7 +53,6 @@
          }
        }
    + User Ready
-
      ```json
      {
        "tpe": 5,
@@ -96,5 +96,16 @@
           "sessionId": <session ID>,
           "roomId": <roomId>,
           "data": <json object>
+         }
+
+
+   -  Player Reply request:
+      ```json
+          "tpe": 8,
+          "sessionId": <session ID>,
+          "roomId": <roomId>,
+          "data": {
+            "answer" -> <Int : 1, 2, 3, 4>
+          }
          }
    
