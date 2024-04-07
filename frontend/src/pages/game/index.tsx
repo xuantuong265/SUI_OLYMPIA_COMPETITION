@@ -1,4 +1,4 @@
-import Game from "~/components/organisms/Game";
+import Game from "~/components/organisms/game";
 
 const GamePage = () => {
   return <Game />;
