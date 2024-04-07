@@ -98,7 +98,7 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
     message match {
       case CreateSession(userId, ref) =>
         val (updatedData, session) = data.createSession(userId, ref)
-        lobby ! Join(userId)
+        lobby ! Join(userId) // FIXME don't join Lobby when re-connecting
         context.self ! LoginSuccess(session)
         context.log.debug(s"new session created ${session.sessionId}. ActorRef: $ref")
         context.watchWith(ref, UserDisconnected(userId))

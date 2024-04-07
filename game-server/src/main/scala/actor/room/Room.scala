@@ -51,6 +51,10 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
          case PlayerReply(userId, answer) =>
            context.log.debug(s"Player $userId send answer $answer")
            gameStarted(data.addReply(Reply(userId, answer)))
+
+         case m @ _ =>
+           context.log.error(s"unhandled message $m")
+           Behaviors.same
   })
   }
 
@@ -58,10 +62,11 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
 
 object Room {
   private val MAX_PLAYERS = 3
+  private val MIN_PLAYERS = 2
 
   private[room] case class Data(players: List[Player], spectators: List[Spectator]) {
 
-    def canStart: Boolean = this.players.forall(_.isReady)
+    def canStart: Boolean = this.players.forall(_.isReady) && this.players.size >= MIN_PLAYERS
 
     def userJoin(userId: UserId): Data = {
       if (players.size == MAX_PLAYERS) {
