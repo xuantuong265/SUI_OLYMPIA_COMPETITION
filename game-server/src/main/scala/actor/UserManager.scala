@@ -26,6 +26,7 @@ import org.apache.pekko.http.scaladsl.model.ws.{Message => WSMessage}
 import java.time.Instant
 
 import message.CreateSession
+import actor.lobby.Lobby
 
 object UserManager {
   case class UserSession(userId: String, sessionId: String, actorRef: ActorRef[WSMessage])
@@ -106,6 +107,7 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
       case UserDisconnected(userId) =>
         context.log.debug(s"User $userId was disconnected")
         // TODO propagate to Lobby/Rooms
+        lobby ! Lobby.Disconnected(userId)
         live(data.removeSession(userId))
 
       case SessionMessage(sessionId, roomId, tpe, jsonData) =>

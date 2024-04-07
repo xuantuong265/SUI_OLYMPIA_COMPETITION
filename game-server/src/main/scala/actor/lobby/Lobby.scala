@@ -13,30 +13,35 @@ import actor.UserManager.UserMessage
 
 
 case class Lobby(session: ActorRef[UserMessage]) {
-  private def live(data: Data): Behavior[LobbyMessage] = Behaviors.receiveMessagePartial {
-    case Join(userId) =>
-      println(s"User $userId joined Lobby")
-      val updatedData = data.join(userId)
-      session ! updatedData.syncMessage
-      live(updatedData)
+  private def live(data: Data): Behavior[LobbyMessage] = Behaviors.receivePartial { (context, message) =>
+    message match {
+        case Join(userId) =>
+          println(s"User $userId joined Lobby")
+          val updatedData = data.join(userId)
+          session ! updatedData.syncMessage
+          live(updatedData)
 
-    case RoomCreated(id, name) =>
-      val updatedData = data.addRoom(Room(id, name, userCount = 1, isStarted = false))
-      session ! updatedData.syncMessage
-      live(updatedData)
+        case RoomCreated(id, name) =>
+          val updatedData = data.addRoom(Room(id, name, userCount = 1, isStarted = false))
+          session ! updatedData.syncMessage
+          live(updatedData)
 
-    case UserLeftLobby(id) =>
-      println(s"user $id left Lobby")
-      val updatedData = data.leave(id)
-      session ! updatedData.syncMessage
-      live(updatedData)
+        case Disconnected(userId) =>
+          context.self ! UserLeftLobby(userId)
+          Behaviors.same
+
+        case UserLeftLobby(id) =>
+          println(s"user $id left Lobby")
+          val updatedData = data.leave(id)
+          session ! updatedData.syncMessage
+          live(updatedData)
 
 
-    case RoomUpdate(id, userCount, isStarted) =>
-      val updatedData = data.updateRoom(id, userCount, isStarted)
-      session ! updatedData.syncMessage
-      live(updatedData)
-
+        case RoomUpdate(id, userCount, isStarted) =>
+          val updatedData = data.updateRoom(id, userCount, isStarted)
+          session ! updatedData.syncMessage
+          live(updatedData)
+    }
   }
 }
 
@@ -60,6 +65,9 @@ object Lobby {
   case class UserLeftLobby(id: UserId) extends LobbyMessage
 
   case class UserManagerGreeting(actorRef: ActorRef[UserMessage]) extends LobbyMessage
+
+  case class Disconnected(userId: String) extends LobbyMessage
+
 
   private[lobby] case class SyncLobbyData(recipients: List[UserId], rooms: List[Room]) extends OutgoingMessage {
     override def toWsMessage: Message = {
