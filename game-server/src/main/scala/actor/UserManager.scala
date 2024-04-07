@@ -99,7 +99,7 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
         val (updatedData, session) = data.createSession(userId, ref)
         lobby ! Join(userId)
         context.self ! LoginSuccess(session)
-        println(s"new session created ${session.sessionId}")
+        context.log.debug(s"new session created ${session.sessionId}. ActorRef: $ref")
         context.watchWith(ref, UserDisconnected(userId))
         live(updatedData)
 
@@ -143,10 +143,10 @@ case class UserManager(lobby: ActorRef[LobbyMessage]) {
 
       case out: OutgoingMessage =>
         out.recipients.foreach { recipient =>
-          println(s"out <-- $recipient: ${out.toWsMessage}")
+          context.log.debug(s"out <-- $recipient: ${out.toWsMessage}")
           data.onlineUsers.get(recipient) match
             case None =>
-              println(s"Error: $recipient not found")
+              context.log.debug(s"Error: $recipient not found")
             case Some(userSession) =>
               userSession.actorRef ! out.toWsMessage
         }

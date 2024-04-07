@@ -30,7 +30,7 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
            context.log.debug("Start game")
            session ! GameStart(updatedData.allUserIds)
            lobby ! RoomUpdate(roomId, data.allUserIds.size, isStarted = true)
-           context.self ! NextRound
+           context.self ! StartRound
            gameStarted(updatedData.toPlayData)
          } else {
            context.log.debug(s"User $userId is ready")
@@ -41,15 +41,19 @@ case class Room(roomId: String, roomName: String, session: ActorRef[UserMessage]
   })
 
 
-  def gameStarted(data: PlayData): Behavior[RoomMessage] = Behaviors.receivePartial((context, message) => message match {
-    case NextRound =>
-      session ! data.currentRoundData
-      Behaviors.same
+  def gameStarted(data: PlayData): Behavior[RoomMessage] =  Behaviors.withTimers{ timer =>
+    Behaviors.receivePartial((context, message) => message match {
+         case StartRound =>
+           // TODO timer
+           session ! data.currentRoundData
+           Behaviors.same
 
-    case PlayerReply(userId, answer) =>
-      context.log.debug(s"Player $userId send answer $answer")
-      gameStarted(data.addReply(Reply(userId, answer)))
+         case PlayerReply(userId, answer) =>
+           context.log.debug(s"Player $userId send answer $answer")
+           gameStarted(data.addReply(Reply(userId, answer)))
   })
+  }
+
 }
 
 object Room {
@@ -223,7 +227,9 @@ object Room {
 
   case class JoinRoom(userId: UserId) extends RoomMessage
 
-  case object NextRound extends RoomMessage
+  case object StartRound extends RoomMessage
+
+  case object EndRound extends RoomMessage
 
   case class PlayerReply(userId: UserId, answer: Answer) extends RoomMessage
 
