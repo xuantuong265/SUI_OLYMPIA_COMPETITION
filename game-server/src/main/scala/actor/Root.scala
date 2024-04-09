@@ -58,7 +58,7 @@ object Root {
       val serverSource = Http().newServerAt("localhost", 8080).connectionSource()
       val bindingFuture: Future[Http.ServerBinding] =
         serverSource.to(Sink.foreach { connection =>
-          println("Accepted new connection from " + connection.remoteAddress)
+          println(s"${connection.localAddress} Accepted new connection from " + connection.remoteAddress)
           connection.handleWithSyncHandler(rh)
         }).run()
 

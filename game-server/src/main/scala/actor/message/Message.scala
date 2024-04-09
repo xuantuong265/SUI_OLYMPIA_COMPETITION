@@ -91,7 +91,7 @@ object SessionMessage {
 
 object CreateSession {
     private val PREFIX = "LOGIN-"
-    private val userIdRegex = s"$PREFIX(\\w+)".r
+    private val userIdRegex = s"$PREFIX(.+)".r
 
     def parseUserId(text: String): Option[String] = {
       userIdRegex.findFirstMatchIn(text).map(matched =>
