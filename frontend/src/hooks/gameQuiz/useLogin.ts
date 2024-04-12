@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 import { TYPE_MESSAGE } from "~/constants/enum";
+import { setCurrentUserId } from "~/redux/auth/slice";
 import { setCurrentRoomsGame } from "~/redux/game/slice";
 import { WebsocketContext } from "~/SocketContext";
 import history from "~/utils/history";
@@ -9,19 +10,23 @@ import { LoginStorage } from "~/utils/localstorage";
 import { useAppDispatch } from "~/utils/reduxHepper";
 
 function useLogin() {
-  const { currentSocket } = useContext(WebsocketContext);
+  const { currentSocket, connectWebSocket } = useContext(WebsocketContext);
 
   const dispatch = useAppDispatch();
 
-  const [value, setValue] = useState<string>("");
-
   const handleLogin = () => {
-    if (currentSocket) {
-      console.log("oke");
-
-      currentSocket.send(`LOGIN-${uuidv4()}`);
-    }
+    connectWebSocket();
   };
+
+  useEffect(() => {
+    if (currentSocket) {
+      currentSocket.onopen = () => {
+        const userId = uuidv4();
+        currentSocket.send(`LOGIN-${userId}`);
+        dispatch(setCurrentUserId(userId));
+      };
+    }
+  }, [currentSocket]);
 
   useEffect(() => {
     if (!currentSocket) return;
@@ -46,7 +51,6 @@ function useLogin() {
   }, [currentSocket]);
 
   return {
-    setValue,
     handleLogin,
   };
 }

@@ -7,7 +7,7 @@ import type {
   IPlayerOfRoom,
   IQuestionOfRound,
   IRoomsResponse,
-} from "~/types/room";
+} from "~/types/game";
 
 export default {
   setCurrentStepGame(

@@ -1,24 +1,45 @@
-import React, { createContext, useEffect, useRef } from "react";
+import React, { createContext, useEffect, useState } from "react";
 
 export interface WebsocketContextProps {
-  currentSocket: WebSocket;
+  currentSocket: WebSocket | null;
+  connectWebSocket: () => void;
 }
 
 export const WebsocketContext = createContext<WebsocketContextProps>({
   currentSocket: null,
+  connectWebSocket: () => {},
 });
 
 export const WebsocketProvider: React.FC = ({ children }: any) => {
-  const socket = new WebSocket("ws:///0046-34-174-1-75.ngrok-free.app/game");
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+
+  function connectWebSocket() {
+    const ws = new WebSocket("ws:///0046-34-174-1-75.ngrok-free.app/game");
+    setSocket(ws);
+  }
 
   useEffect(() => {
     return () => {
-      socket.close();
+      socket?.close();
     };
-  }, [socket]);
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   const contextValue: WebsocketContextProps = {
     currentSocket: socket,
+    connectWebSocket,
   };
 
   return (

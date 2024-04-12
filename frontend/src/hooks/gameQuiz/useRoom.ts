@@ -2,6 +2,7 @@ import { isEmpty } from "lodash";
 import { useContext, useEffect, useState } from "react";
 
 import { STEP_GAME_QUIZ, TYPE_MESSAGE } from "~/constants/enum";
+import { currentUserIdSelector } from "~/redux/auth/selector";
 import { playersOfRoomSelector, roomsSelector } from "~/redux/game/selector";
 import {
   setCurrentStepGame,
@@ -19,6 +20,7 @@ function useRoom() {
 
   const playersOfRoom = useAppSelector(playersOfRoomSelector);
   const rooms = useAppSelector(roomsSelector);
+  const currentUserId = useAppSelector(currentUserIdSelector);
 
   const [isReady, setIsReady] = useState<boolean>(false);
 
@@ -27,9 +29,9 @@ function useRoom() {
   );
   const sessionId = LoginStorage.getData()?.sessionId || 0;
 
-  console.log(sessionId);
-
   useEffect(() => {
+    if (!currentSocket) return;
+
     currentSocket.onmessage = (e) => {
       const { tpe, data } = JSON.parse(e.data);
 
@@ -37,32 +39,40 @@ function useRoom() {
         dispatch(setPlayersOfRoom(data));
       }
 
-      if (tpe === TYPE_MESSAGE.READY_GAME && !isEmpty(data)) {
-        console.log(data);
-
+      if (
+        tpe === TYPE_MESSAGE.READY_GAME &&
+        !isEmpty(data) &&
+        data.userId === currentUserId
+      ) {
         setIsReady(data.isReady);
       }
 
       if (tpe === TYPE_MESSAGE.PLAY_GAME && !isEmpty(data)) {
-        dispatch(setQuestionOfRound(data));
+        const {
+          roundNumber,
+          question: { q, ...answers },
+        } = data;
+
+        dispatch(
+          setQuestionOfRound({
+            roundNumber,
+            answers,
+            question: q,
+          })
+        );
+        dispatch(setCurrentStepGame(STEP_GAME_QUIZ.PLAY_GAME_GAME));
       }
     };
   }, [currentSocket]);
 
   function handleReadyGame() {
-    currentSocket.send(
+    currentSocket?.send(
       JSON.stringify({
         tpe: TYPE_MESSAGE.READY_GAME,
         sessionId,
         roomId: playersOfRoom.roomId,
       })
     );
-
-    console.log({
-      tpe: TYPE_MESSAGE.READY_GAME,
-      sessionId,
-      roomId: playersOfRoom.roomId,
-    });
   }
 
   function handleBackStep() {

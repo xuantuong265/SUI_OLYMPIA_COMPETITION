@@ -26,7 +26,7 @@ function Game() {
     switch (currentStep) {
       case STEP_GAME_QUIZ.ROOM:
         return <Room />;
-      case STEP_GAME_QUIZ.READY_GAME:
+      case STEP_GAME_QUIZ.PLAY_GAME_GAME:
         return <PlayGame />;
       case STEP_GAME_QUIZ.END_GAME:
         return <EndGame />;

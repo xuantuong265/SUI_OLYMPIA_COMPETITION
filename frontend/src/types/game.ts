@@ -1,7 +1,7 @@
 export type IRoom = {
   id: number;
   name: string;
-  usersCount: number;
+  userCount: number;
   isStarted: boolean;
 };
 
@@ -22,5 +22,6 @@ export type IPlayerOfRoom = {
 
 export type IQuestionOfRound = {
   roundNumber: number;
-  question: object;
+  question: string;
+  answers: Record<string, string>;
 };

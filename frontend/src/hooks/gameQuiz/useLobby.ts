@@ -2,6 +2,7 @@ import { isEmpty } from "lodash";
 import { useContext, useEffect, useState } from "react";
 
 import { STEP_GAME_QUIZ, TYPE_MESSAGE } from "~/constants/enum";
+import { currentUserIdSelector } from "~/redux/auth/selector";
 import { roomsSelector } from "~/redux/game/selector";
 import {
   setCurrentRoomsGame,
@@ -9,7 +10,7 @@ import {
   setPlayersOfRoom,
 } from "~/redux/game/slice";
 import { WebsocketContext } from "~/SocketContext";
-import type { IRoom } from "~/types/room";
+import type { IPlayer, IRoom } from "~/types/game";
 import { LoginStorage } from "~/utils/localstorage";
 import { useAppDispatch, useAppSelector } from "~/utils/reduxHepper";
 
@@ -17,6 +18,8 @@ function useLobby() {
   const { currentSocket } = useContext(WebsocketContext);
 
   const rooms = useAppSelector(roomsSelector);
+  const currentUserId = useAppSelector(currentUserIdSelector);
+
   const dispatch = useAppDispatch();
 
   const [roomsFilter, setRoomsFilter] = useState<IRoom[]>([]);
@@ -57,8 +60,6 @@ function useLobby() {
   function handleJoinRoom(roomId: number) {
     if (!currentSocket) return;
 
-    console.log("aa");
-
     currentSocket.send(
       JSON.stringify({
         tpe: TYPE_MESSAGE.JOIN_ROOM,
@@ -76,7 +77,8 @@ function useLobby() {
     currentSocket.onmessage = (event) => {
       const { tpe, data } = JSON.parse(event.data);
 
-      console.log("hahahah");
+      console.log(event.data);
+      console.log("curent", currentUserId);
 
       if (tpe === TYPE_MESSAGE.LOBBY && !isEmpty(data)) {
         dispatch(
@@ -87,9 +89,13 @@ function useLobby() {
         );
       }
 
-      console.log("data", data);
-
       if (tpe === TYPE_MESSAGE.JOIN_ROOM && !isEmpty(data)) {
+        const currentUseJoinedRoom = data.players.find(
+          (player: IPlayer) => player.userId === currentUserId
+        );
+
+        if (isEmpty(currentUseJoinedRoom)) return;
+
         dispatch(setPlayersOfRoom(data));
         dispatch(setCurrentStepGame(STEP_GAME_QUIZ.ROOM));
       }

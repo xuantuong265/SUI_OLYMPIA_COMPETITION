@@ -2,7 +2,7 @@ export enum STEP_GAME_QUIZ {
   LOGIN = "login",
   LOBBY = "lobby",
   ROOM = "room",
-  READY_GAME = "readyGame",
+  PLAY_GAME_GAME = "readyGame",
   END_GAME = "endGame",
 }
 
@@ -13,4 +13,6 @@ export enum TYPE_MESSAGE {
   CREATE_ROOM = 4,
   READY_GAME = 5,
   PLAY_GAME = 7,
+  REPLY_QUESTION = 8,
+  WINNER_ROUND = 9,
 }

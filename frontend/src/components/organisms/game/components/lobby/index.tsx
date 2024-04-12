@@ -74,14 +74,14 @@ function Lobby() {
                   <dl className="grid sm:block lg:grid xl:block grid-cols-2 grid-rows-2 items-center">
                     <div>
                       <dt className="sr-only">Title</dt>
-                      <dd className="group-hover:text-white font-semibold text-slate-900">
+                      <dd className="group-hover:text-white font-semibold text-slate-900 text-left">
                         {room.name}
                       </dd>
                     </div>
                     <div>
                       <dt className="sr-only">Category</dt>
-                      <dd className="group-hover:text-blue-200 mt-3">
-                        {room.isStarted ? "Started" : "Waiting"}
+                      <dd className="group-hover:text-blue-200 mt-3 text-left">
+                        {room.isStarted ? "Playing" : "Waiting"}
                       </dd>
                     </div>
                     <div className="col-start-2 row-start-1 row-end-3 sm:mt-4 lg:mt-0 xl:mt-4">
@@ -90,11 +90,16 @@ function Lobby() {
                         x-for="user in project.users"
                         className="flex justify-end sm:justify-start lg:justify-end xl:justify-start -space-x-1.5"
                       >
-                        <img
-                          className="w-6 h-6 rounded-full bg-slate-100 ring-2 ring-white"
-                          loading="lazy"
-                          src="https://i.pinimg.com/originals/ff/a0/9a/ffa09aec412db3f54deadf1b3781de2a.png"
-                        ></img>
+                        {Array.from({ length: room.userCount }, (_, index) => {
+                          return (
+                            <img
+                              key={index}
+                              className="w-4 h-4 rounded-full bg-slate-100 ring-2 ring-white"
+                              loading="lazy"
+                              src="https://i.pinimg.com/originals/ff/a0/9a/ffa09aec412db3f54deadf1b3781de2a.png"
+                            ></img>
+                          );
+                        })}
                       </dd>
                     </div>
                   </dl>

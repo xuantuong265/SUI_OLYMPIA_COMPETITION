@@ -8,7 +8,7 @@ import type {
   IPlayerOfRoom,
   IQuestionOfRound,
   IRoom,
-} from "~/types/room";
+} from "~/types/game";
 
 export interface GameStateType {
   currentStep: STEP_GAME_QUIZ;
@@ -37,8 +37,9 @@ export const initialState: GameStateType = {
     players: [] as IPlayer[],
   },
   questionOfRound: {
-    roundNumber: 0,
-    question: {},
+    roundNumber: 1,
+    question: "",
+    answers: {},
   },
 };
 
